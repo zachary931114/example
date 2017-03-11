@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="me.zhoubl.pay.sysmanage.service.dao.SysAccountDao">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="me.zhoubl.pay.sysmanage.service.entity.SysAccount">
+		<id column="id" property="id" />
+		<result column="version" property="version" />
+		<result column="create_time" property="createTime" />
+		<result column="status" property="status" />
+		<result column="remark" property="remark" />
+		<result column="code" property="code" />
+		<result column="name" property="name" />
+		<result column="pwd" property="pwd" />
+		<result column="email" property="email" />
+		<result column="phone" property="phone" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, version, create_time AS createTime, status, remark, code, name, pwd, email, phone
+    </sql>
+    
+    <select id="selectCountByCode" resultType="int" >
+    	select count(1) from sys_account a where a.code = #{code}
+    </select>
+    
+    <insert id="insertSysAccount"  useGeneratedKeys="false">
+    	insert ignore into sys_account(id, version, create_time, status, remark, code, name, pwd, email, phone) values
+    	 (#{sysAccount.id},#{sysAccount.version},#{sysAccount.createTime},#{sysAccount.status},#{sysAccount.remark},#{sysAccount.code},#{sysAccount.name},#{sysAccount.pwd},#{sysAccount.email},#{sysAccount.phone})
+    </insert>
+    
+</mapper>
