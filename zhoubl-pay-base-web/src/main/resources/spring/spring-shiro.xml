@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+		<property name="securityManager" ref="securityManager" />
+		<property name="loginUrl" value="/login.ftl" />
+		<property name="successUrl" value="/main" />
+		<property name="filters">
+			<map>
+				<entry key="logoutFilter" value-ref="logoutFilter" />
+			</map>
+		</property>
+		<property name="filterChainDefinitions">
+			<value>
+				/resources/** = anon
+				/kaptcha = anon
+				/login/** = anon
+				/logout = logoutFilter
+				/** = user
+			</value>
+		</property>
+	</bean>
+
+	<bean id="logoutFilter" class="org.apache.shiro.web.filter.authc.LogoutFilter">
+		<property name="redirectUrl" value="/login.ftl" />
+	</bean>
+
+	<bean id="accountCredentialsMatcher" class="me.zhoubl.pay.base.web.shiro.AccountCredentialsMatcher" />
+
+	<bean id="accountRealm" class="me.zhoubl.pay.base.web.shiro.AccountRealm">
+		<property name="credentialsMatcher" ref="accountCredentialsMatcher" />
+		<property name="cachingEnabled" value="true" />
+		<property name="authenticationCachingEnabled" value="true" />
+		<property name="authenticationCacheName" value="authenticationCache" />
+		<property name="authorizationCachingEnabled" value="true" />
+		<property name="authorizationCacheName" value="authorizationCache" />
+	</bean>
+
+	<bean id="rememberMeCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+		<constructor-arg value="rememberMe" />
+		<property name="path" value="/" />
+		<property name="httpOnly" value="true" />
+		<property name="maxAge" value="2592000" />
+	</bean>
+
+	<bean id="sessionIdCookie" class="org.apache.shiro.web.servlet.SimpleCookie">
+		<constructor-arg value="sid" />
+		<property name="path" value="/" />
+		<property name="httpOnly" value="true" />
+		<property name="maxAge" value="-1" />
+	</bean>
+
+	<bean id="rememberMeManager" class="org.apache.shiro.web.mgt.CookieRememberMeManager">
+		<property name="cipherKey"
+			value="\#{T(org.apache.shiro.codec.Base64).decode('MTk5MzExMTQ=')}" />
+		<property name="cookie" ref="rememberMeCookie" />
+	</bean>
+
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+		<property name="realm" ref="accountRealm" />
+		<property name="cacheManager" ref="shiroRedisCacheManager" />
+		<property name="sessionManager" ref="shiroRedisSessionManager" />
+		<property name="rememberMeManager" ref="rememberMeManager" />
+	</bean>
+
+	<bean id="sessionIdGenerator"
+		class="org.apache.shiro.session.mgt.eis.JavaUuidSessionIdGenerator" />
+
+	<bean id="sessionDAO" class="me.zhoubl.pay.common.web.shiro.ShiroSessionDao">
+		<property name="sessionIdGenerator" ref="sessionIdGenerator" />
+		<property name="expire" value="${shiro.redis.session.expire}" />
+		<property name="redisTemplate" ref="shiroSessionRedisTemplate" />
+	</bean>
+
+	<bean id="shiroRedisSessionManager"
+		class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+		<property name="globalSessionTimeout" value="${shiro.redis.session.expire}" />
+		<property name="deleteInvalidSessions" value="true" />
+		<property name="sessionValidationSchedulerEnabled" value="true" />
+		<property name="sessionValidationScheduler" ref="sessionValidationScheduler" />
+		<property name="sessionIdCookieEnabled" value="true"></property>
+		<property name="sessionIdCookie" ref="sessionIdCookie" />
+		<property name="sessionIdUrlRewritingEnabled" value="false" />
+		<property name="sessionDAO" ref="sessionDAO" />
+		<property name="sessionListeners">
+			<list>
+				<bean class="me.zhoubl.pay.common.web.listener.CommonShiroSessionListener" />
+			</list>
+		</property>
+	</bean>
+
+	<bean id="sessionValidationScheduler"
+		class="org.apache.shiro.session.mgt.ExecutorServiceSessionValidationScheduler">
+		<property name="sessionManager" ref="shiroRedisSessionManager" />
+	</bean>
+
+	<bean id="shiroRedisCacheManager" class="me.zhoubl.pay.common.web.shiro.ShiroRedisCacheManager">
+		<property name="redisTemplate" ref="redisTemplate" />
+		<property name="expire" value="${shiro.redis.cache.expire}" />
+	</bean>
+
+	<bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor" />
+	<bean
+		class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+		depends-on="lifecycleBeanPostProcessor" />
+	<bean
+		class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+		<property name="securityManager" ref="securityManager" />
+	</bean>
+
+
+	<!-- spring session -->
+	<!-- <bean id="redisHttpSessionConfiguration" -->
+	<!-- class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration"> -->
+	<!-- <property name="maxInactiveIntervalInSeconds" value="60" /> -->
+	<!-- <property name="httpSessionStrategy" ref="cookieHttpSessionStrategy" 
+		/> -->
+	<!-- <property name="defaultRedisSerializer"> -->
+	<!-- <bean class="me.zhoubl.pay.common.web.redis.ProtostuffRedisSerializer" 
+		/> -->
+	<!-- </property> -->
+	<!-- <property name="httpSessionListeners"> -->
+	<!-- <list> -->
+	<!-- <bean class="me.zhoubl.pay.common.web.listener.CommonHttpSessionListener" 
+		/> -->
+	<!-- </list> -->
+	<!-- </property> -->
+	<!-- </bean> -->
+
+	<!-- <bean id="defaultCookieSerializer" -->
+	<!-- class="org.springframework.session.web.http.DefaultCookieSerializer"> -->
+	<!-- <property name="cookieName" value="SS_SESSION_ID" /> -->
+	<!-- <property name="cookiePath" value="/" /> -->
+	<!-- </bean> -->
+
+	<!-- <bean id="cookieHttpSessionStrategy" -->
+	<!-- class="org.springframework.session.web.http.CookieHttpSessionStrategy"> -->
+	<!-- <property name="cookieSerializer" ref="defaultCookieSerializer" /> -->
+	<!-- </bean> -->
+
+
+</beans>
